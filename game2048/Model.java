@@ -5,7 +5,7 @@ import java.util.Observable;
 
 
 /** The state of a game of 2048.
- *  @author TODO: YOUR NAME HERE
+ *  @author Yiming Yuan
  */
 public class Model extends Observable {
     /** Current contents of the board. */
@@ -109,17 +109,48 @@ public class Model extends Observable {
     public boolean tilt(Side side) {
         boolean changed;
         changed = false;
+        board.setViewingPerspective(side);
 
         // TODO: Modify this.board (and perhaps this.score) to account
         // for the tilt to the Side SIDE. If the board changed, set the
         // changed local variable to true.
+        // Process each column.
+        for (int col = 0; col < board.size(); col++) {
+            boolean merged = false; // This flag will check if merge occurred in this pass.
+            int lastMergeRow = -1; // This will keep track of where the last merge happened.
+
+            // Start from the second last row and move upwards to see if we can move or merge.
+            for (int row = board.size() - 2; row >= 0; row--) {
+                Tile current = board.tile(col, row);
+                if (current != null) {
+                    int targetRow = row + 1;
+                    while (targetRow < board.size() && board.tile(col, targetRow) == null) { // Move upwards until you can't.
+                        targetRow++;
+                    }
+                    if (targetRow < board.size() && board.tile(col, targetRow).value() == current.value() && lastMergeRow != targetRow) {
+                        // Merge tiles if they are the same and haven't been merged this move.
+                        board.move(col, targetRow, current);
+                        score += current.value() * 2;
+                        lastMergeRow = targetRow; // Update the last merge position.
+                        changed = true;
+                    } else if (targetRow - 1 != row) {
+                        // Move tile upwards if it's not merging.
+                        board.move(col, targetRow - 1, current);
+                        changed = true;
+                    }
+                }
+            }
+        }
 
         checkGameOver();
         if (changed) {
             setChanged();
+            notifyObservers();
         }
+        board.setViewingPerspective(Side.NORTH); // Reset the perspective to NORTH.
         return changed;
     }
+
 
     /** Checks if the game is over and sets the gameOver variable
      *  appropriately.
@@ -138,6 +169,13 @@ public class Model extends Observable {
      * */
     public static boolean emptySpaceExists(Board b) {
         // TODO: Fill in this function.
+        for (int i = 0; i <b.size(); i++){
+            for (int j = 0; j <b.size(); j++) {
+                if (b.tile(i,j) == null) {
+                    return true;
+                }
+            }
+        }
         return false;
     }
 
@@ -148,6 +186,14 @@ public class Model extends Observable {
      */
     public static boolean maxTileExists(Board b) {
         // TODO: Fill in this function.
+        for (int i = 0; i <b.size(); i++){
+            for (int j = 0; j <b.size(); j++) {
+                Tile t = b.tile(i,j);
+                if (t != null && t.value() == MAX_PIECE) {
+                    return true;
+                }
+            }
+        }
         return false;
     }
 
@@ -159,12 +205,34 @@ public class Model extends Observable {
      */
     public static boolean atLeastOneMoveExists(Board b) {
         // TODO: Fill in this function.
+        if (emptySpaceExists(b)){
+            return true;
+        }
+        for (int i = 0; i <b.size(); i++){
+            for (int j = 0; j <b.size(); j++) {
+                Tile t = b.tile(i,j);
+                if (t != null) {
+                    if (i<b.size() -1){
+                        Tile right = b.tile(i+1,j);
+                        if (right != null && t.value() == right.value()){
+                            return true;
+                        }
+                    }
+                    if (j<b.size() -1){
+                        Tile above = b.tile(i,j+1);
+                        if (above!= null && t.value() == above.value()){
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
         return false;
     }
 
 
     @Override
-     /** Returns the model as a string, used for debugging. */
+    /** Returns the model as a string, used for debugging. */
     public String toString() {
         Formatter out = new Formatter();
         out.format("%n[%n");
